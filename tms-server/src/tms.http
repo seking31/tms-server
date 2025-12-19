@@ -1,0 +1,11 @@
+### Add a new task to the projects collection
+POST http://[::1]:3000/api/projects
+Content-Type: application/json
+
+{
+  "title": "Web Dev",
+  "description": "Write the documentation for the project",
+  "status": "In Progress",
+  "priority": "High",
+  "dueDate": "2021-01-10T00:00:00.000Z"
+}
