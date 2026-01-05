@@ -115,32 +115,25 @@ router.patch("/:id", async (req, res, next) => {
 router.post("/", async (req, res) => {
   try {
     const valid = validateAddProject(req.body);
-
-    console.log(req.body);
-    console.log(valid);
     if (!valid) {
       return res.status(400).send({
         message: ajv.errorsText(validateAddProject.errors),
       });
     }
 
-    const projectWithId = {
-      ...req.body,
-      projectId: Math.floor(1000 + Math.random() * 9000),
-    };
-
-    const newProject = new Project(projectWithId);
-    await newProject.save();
+    const newProject = await Project.create(req.body);
 
     return res.status(201).send({
       message: "Project created successfully",
-      projectId: newProject._id,
+      projectId: newProject.id, // string version of _id
+      // or: dbId: newProject._id
     });
   } catch (err) {
     console.error(`Error while creating project: ${err}`);
     return res.status(500).send({ message: "Server error" });
   }
 });
+
 // PATCH request to update a project
 router.patch("/:id", async (req, res, next) => {
   try {
