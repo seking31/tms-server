@@ -4,164 +4,136 @@ const { Project } = require("../../models/project");
 const { addProjectSchema, updateProjectSchema } = require("../../schemas");
 const Ajv = require("ajv");
 const createError = require("http-errors");
+const { nanoid } = require("nanoid"); // common usage
 
-const ajv = new Ajv();
+const ajv = new Ajv({ allErrors: true });
 const validateAddProject = ajv.compile(addProjectSchema);
 const validateUpdateProject = ajv.compile(updateProjectSchema);
 
-// GET return task that matches search term
+// helper: escape regex special chars
+function escapeRegex(str = "") {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+// GET /api/projects/search?term=foo
 router.get("/search", async (req, res, next) => {
   try {
-    const { term } = req.query;
+    const term = String(req.query.term || "").trim();
+    if (!term) return next(createError(400, "Missing search term"));
 
-    if (!term) {
-      return res.status(400).send({ message: "Missing search term" });
-    }
-
-    const regex = new RegExp(term, "i");
+    const regex = new RegExp(escapeRegex(term), "i");
 
     const results = await Project.find({
       $or: [{ name: regex }, { description: regex }],
     });
 
-    res.send(results);
+    return res.status(200).send(results);
   } catch (err) {
-    console.error(`Error while creating task: ${err}`);
-    next(err);
+    return next(err);
+  }
+});
+
+// GET /api/projects (all)
+router.get("/", async (req, res, next) => {
+  try {
+    const projects = await Project.find({});
+    return res.status(200).send(projects);
+  } catch (err) {
+    return next(err);
   }
 });
 
 // GET /api/projects/:id
 router.get("/:id", async (req, res, next) => {
   try {
-    const id = req.params.id;
+    const { id } = req.params;
 
     const project = await Project.findById(id);
-
-    if (!project) {
-      return res.status(404).send({ message: "Project not found" });
-    }
+    if (!project) return next(createError(404, "Project not found"));
 
     return res.status(200).send(project);
   } catch (err) {
-    console.error(`Error while getting project by id: ${err}`);
-    return res.status(500).send({ message: "Server error" });
+    // Mongoose cast error => bad id format
+    if (err?.name === "CastError")
+      return next(createError(400, "Invalid project id"));
+    return next(err);
   }
 });
 
-// DELETE /api/projects/:id - delete a project by id
-router.delete("/:projectId", async (req, res, next) => {
-  try {
-    const { projectId } = req.params;
-
-    const result = await Project.deleteOne({ _id: projectId });
-
-    if (!result || result.deletedCount === 0) {
-      return next(createError(404, "Not Found"));
-    }
-
-    return res.status(200).send({
-      message: "Project deleted successfully",
-      id: projectId,
-    });
-  } catch (err) {
-    return next(createError(404, "Not Found"));
-  }
-});
-
-// GET /api/projects  Return all projects
-router.get("/", async (req, res, next) => {
-  try {
-    const projects = await Project.find({});
-    return res.status(200).send(projects);
-  } catch (err) {
-    console.error(`Error while getting projects: ${err}`);
-    return res.status(500).send({ message: "Server error" });
-  }
-});
-
-// PATCH request to update a project document in the project's collection
-router.patch("/:id", async (req, res, next) => {
-  try {
-    const projectId = req.params.id;
-    const project = await Project.findOne({ _id: projectId });
-
-    const valid = validateUpdateProject(req.body);
-
-    if (!project) {
-      return next(createError(404, `Project with ID ${projectId} not found`));
-    }
-
-    if (!valid) {
-      return next(
-        createError(400, ajv.errorsText(validateUpdateProject.errors))
-      );
-    }
-
-    project.set(req.body);
-    await project.save();
-
-    res.send({
-      message: "Project updated successfully",
-      id: project._id,
-    });
-  } catch (err) {
-    console.error(`Error while updating project: ${err}`);
-    next(err);
-  }
-});
-
-// POST request to add a new project
-router.post("/", async (req, res) => {
+// POST /api/projects
+router.post("/", async (req, res, next) => {
   try {
     const valid = validateAddProject(req.body);
     if (!valid) {
-      return res.status(400).send({
-        message: ajv.errorsText(validateAddProject.errors),
-      });
+      return next(createError(400, ajv.errorsText(validateAddProject.errors)));
     }
 
-    const newProject = await Project.create(req.body);
+    const projectWithId = {
+      ...req.body,
+      projectId: nanoid(10), // optional custom id
+    };
+
+    const newProject = await Project.create(projectWithId);
 
     return res.status(201).send({
       message: "Project created successfully",
-      projectId: newProject.id, // string version of _id
-      // or: dbId: newProject._id
+      id: newProject._id,
+      projectId: newProject.projectId,
     });
   } catch (err) {
-    console.error(`Error while creating project: ${err}`);
-    return res.status(500).send({ message: "Server error" });
+    console.log(err, "e;lrkjad;lfkja;dlkfja");
+    return next(err);
   }
 });
 
-// PATCH request to update a project
+// PATCH /api/projects/:id
 router.patch("/:id", async (req, res, next) => {
   try {
-    const projectId = req.params.id;
-    const project = await Project.findOne({ _id: projectId });
+    const { id } = req.params;
 
     const valid = validateUpdateProject(req.body);
-
-    if (!project) {
-      return next(createError(404, `Project with ID ${projectId} not found`));
-    }
-
     if (!valid) {
       return next(
         createError(400, ajv.errorsText(validateUpdateProject.errors))
       );
     }
 
-    project.set(req.body);
-    await project.save();
+    const updated = await Project.findByIdAndUpdate(id, req.body, {
+      new: true,
+      runValidators: true,
+    });
 
-    res.send({
+    if (!updated)
+      return next(createError(404, `Project with ID ${id} not found`));
+
+    return res.status(200).send({
       message: "Project updated successfully",
-      id: project._id,
+      id: updated._id,
     });
   } catch (err) {
-    console.error(`Error while updating project: ${err}`);
-    next(err);
+    if (err?.name === "CastError")
+      return next(createError(400, "Invalid project id"));
+    return next(err);
+  }
+});
+
+// DELETE /api/projects/:id
+router.delete("/:id", async (req, res, next) => {
+  try {
+    const { id } = req.params;
+
+    const result = await Project.deleteOne({ _id: id });
+    if (!result?.deletedCount)
+      return next(createError(404, "Project not found"));
+
+    return res.status(200).send({
+      message: "Project deleted successfully",
+      id,
+    });
+  } catch (err) {
+    if (err?.name === "CastError")
+      return next(createError(400, "Invalid project id"));
+    return next(err);
   }
 });
 
