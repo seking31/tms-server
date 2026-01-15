@@ -23,8 +23,9 @@ const taskRouter = require("./routes/task");
 let app = express();
 
 // Mongoose connection
-const connectionString = process.env.MONGODB_URI;
-const dbName = process.env.DB_NAME;
+const connectionString = "mongodb+srv://gms_user:HiJETfd7H7GdUbwF@bellevueuniversity.qxxmbuj.mongodb.net/?appName=BellevueUniversity";
+
+const dbName = "TMS-DATABASE";
 
 // Function to connect to the database
 async function connectToDatabase() {
