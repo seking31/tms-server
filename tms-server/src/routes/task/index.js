@@ -8,6 +8,11 @@ const router = express.Router();
 
 const ajv = new Ajv();
 
+// helper: escape regex special chars
+function escapeRegex(str = "") {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 const validateAddTask = ajv.compile(addTaskSchema);
 const validateUpdateTask = ajv.compile(updateTaskSchema);
 
@@ -31,7 +36,7 @@ router.get("/search", async (req, res, next) => {
       return res.status(400).send({ message: "Missing search term" });
     }
 
-    const regex = new RegExp(term, "i");
+    const regex = new RegExp(escapeRegex(term), "i");
 
     const results = await Task.find({
       $or: [
@@ -53,9 +58,7 @@ router.get("/search", async (req, res, next) => {
 router.get("/:id", async (req, res, next) => {
   try {
     const { id } = req.params;
-    console.log(id);
     const task = await Task.findById(id);
-    console.log(task);
     if (!task) {
       return res.status(404).send({ message: "Task not found" });
     }

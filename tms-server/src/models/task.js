@@ -12,7 +12,7 @@ const taskSchema = new Schema({
   description: {
     type: String,
     required: [true, "Task description is required"],
-    maxlength: [500, "Task description cannot exceed 255 characters"]
+    maxlength: [500, "Task description cannot exceed 500 characters"]
   },
   status: {
     type: String,

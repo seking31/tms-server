@@ -81,7 +81,6 @@ router.post("/", async (req, res, next) => {
       projectId: newProject.projectId,
     });
   } catch (err) {
-    console.log(err, "e;lrkjad;lfkja;dlkfja");
     return next(err);
   }
 });

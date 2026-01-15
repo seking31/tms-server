@@ -6,6 +6,7 @@
  */
 
 // require statements
+require("dotenv").config();
 const express = require("express");
 const createError = require("http-errors");
 const cookieParser = require("cookie-parser");
@@ -22,9 +23,8 @@ const taskRouter = require("./routes/task");
 let app = express();
 
 // Mongoose connection
-const connectionString = "mongodb+srv://gms_user:HiJETfd7H7GdUbwF@bellevueuniversity.qxxmbuj.mongodb.net/?appName=BellevueUniversity";
-
-const dbName = "TMS-DATABASE";
+const connectionString = process.env.MONGODB_URI;
+const dbName = process.env.DB_NAME;
 
 // Function to connect to the database
 async function connectToDatabase() {
