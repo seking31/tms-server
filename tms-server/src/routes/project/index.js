@@ -2,18 +2,12 @@ const express = require("express");
 const router = express.Router();
 const { Project } = require("../../models/project");
 const { addProjectSchema, updateProjectSchema } = require("../../schemas");
-const Ajv = require("ajv");
 const createError = require("http-errors");
-const { nanoid } = require("nanoid"); // common usage
+const { nanoid } = require("nanoid");
+const { ajv, escapeRegex } = require("../../utils");
 
-const ajv = new Ajv({ allErrors: true });
 const validateAddProject = ajv.compile(addProjectSchema);
 const validateUpdateProject = ajv.compile(updateProjectSchema);
-
-// helper: escape regex special chars
-function escapeRegex(str = "") {
-  return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
 
 // GET /api/projects/search?term=foo
 router.get("/search", async (req, res, next) => {

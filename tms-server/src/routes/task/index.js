@@ -1,17 +1,9 @@
 const express = require("express");
-const Ajv = require("ajv");
 const createError = require("http-errors");
 const { Task } = require("../../models/task");
-const { addTaskSchema } = require("../../schemas");
-const { updateTaskSchema } = require("../../schemas");
+const { addTaskSchema, updateTaskSchema } = require("../../schemas");
+const { ajv, escapeRegex } = require("../../utils");
 const router = express.Router();
-
-const ajv = new Ajv();
-
-// helper: escape regex special chars
-function escapeRegex(str = "") {
-  return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
 
 const validateAddTask = ajv.compile(addTaskSchema);
 const validateUpdateTask = ajv.compile(updateTaskSchema);
